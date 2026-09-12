@@ -1,5 +1,5 @@
 #include "SkylanderCrypt.h"
-#include <openssl/md5.h>
+#include "mbedtls/md5.h"
 #include "rijndael.h"
 #include <string.h>
 
@@ -16,10 +16,7 @@ int computeEncryptionKey(char *keyOut, char *dataBuffer, unsigned int blockNumbe
     memcpy(premd5 + 33, hashConst, sizeof(hashConst));
 
     // calculate md5 = keyOut
-    MD5_CTX md5;
-    MD5_Init(&md5);
-    MD5_Update(&md5, premd5, sizeof(premd5));
-    MD5_Final(keyOut, &md5);
+    mbedtls_md5((const unsigned char *)premd5, sizeof(premd5), keyOut);
 }
 
 int Decrypt(char *decBlockData, char *aesKey, char *encBlockData) // Block = 0x10 = 16 | AES = 0x10 = 32

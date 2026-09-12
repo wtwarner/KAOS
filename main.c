@@ -251,6 +251,7 @@ int main()
   gpio_pull_up(5);
   // Make the I2C pins available to picotool
   bi_decl(bi_2pins_with_func(4, 5, GPIO_FUNC_I2C));
+#if 0
   lcd_init();
   printf("LCD INIT done\n");
   sleep_ms(200);
@@ -262,7 +263,8 @@ int main()
   lcd_set_cursor(1, (MAX_CHARS / 2) - strlen(" Initialization ") / 2);
   lcd_string(" Initialization ");
   sleep_ms(500);
-
+#endif
+  printf("SD Init\n");
   // SDCARD INIT
   sd_card_t *pSD = sd_get_by_num(0);
   FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
@@ -280,10 +282,14 @@ int main()
     while (true)
       ;
   }
+  printf("SD mounted\n");
   SDSkylanders(); // Gets how many skylanders we have
 
   char *skyFiles[sd_skylander_count];
   size_t count = f_listfiles(skyFiles, 255);
+  // FIXME
+  printf("hanging...\n");
+  while (1) { sleep_ms(1);}
 
   // INIT TINYUSB
   board_init();
@@ -587,7 +593,7 @@ void tud_resume_cb(void)
 {
 }
 
-void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint8_t len)
+void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_t len)
 {
 }
 

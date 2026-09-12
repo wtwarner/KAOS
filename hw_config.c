@@ -54,7 +54,7 @@ static spi_t spis[] = {  // One for each SPI.
         //.baud_rate = 25 * 1000 * 1000, // Actual frequency: 20833333. Has
         // worked for me with SanDisk.
 
-        .dma_isr = spi0_dma_isr
+        //.dma_isr = spi0_dma_isr
     }
 };
 
