@@ -251,7 +251,7 @@ int main()
   gpio_pull_up(5);
   // Make the I2C pins available to picotool
   bi_decl(bi_2pins_with_func(4, 5, GPIO_FUNC_I2C));
-#if 0
+
   lcd_init();
   printf("LCD INIT done\n");
   sleep_ms(200);
@@ -263,7 +263,7 @@ int main()
   lcd_set_cursor(1, (MAX_CHARS / 2) - strlen(" Initialization ") / 2);
   lcd_string(" Initialization ");
   sleep_ms(500);
-#endif
+
   printf("SD Init\n");
   // SDCARD INIT
   sd_card_t *pSD = sd_get_by_num(0);
@@ -295,7 +295,7 @@ int main()
   tud_init(0);
   printf("INIT TinyUSB done\n");
   sleep_ms(200);
-  #if 0
+
   lcd_clear();
   lcd_set_cursor(0, (MAX_CHARS / 2) - strlen("    Finished    ") / 2);
   lcd_string("    Finished    ");
@@ -309,7 +309,7 @@ int main()
   lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("    Emulator    ") / 2);
   lcd_string("    Emulator    ");
   sleep_ms(500);
-#endif
+
   char *nbuffer;
   nbuffer = calloc(MSG_SIZE, 1);
   nbuffer[0] = 0x53;
@@ -399,7 +399,6 @@ int main()
       lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("    Emulator    ") / 2);
       lcd_string("    Emulator    ");
       sleep_ms(500);
-      printf("Portal\n");
     }
 
     if (!gpio_get(BUTTON_LEFT))
