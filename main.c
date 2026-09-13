@@ -287,9 +287,7 @@ int main()
 
   char *skyFiles[sd_skylander_count];
   size_t count = f_listfiles(skyFiles, 255);
-  // FIXME
-  printf("hanging...\n");
-  while (1) { sleep_ms(1);}
+
 
   // INIT TINYUSB
   board_init();
@@ -297,6 +295,7 @@ int main()
   tud_init(0);
   printf("INIT TinyUSB done\n");
   sleep_ms(200);
+  #if 0
   lcd_clear();
   lcd_set_cursor(0, (MAX_CHARS / 2) - strlen("    Finished    ") / 2);
   lcd_string("    Finished    ");
@@ -310,7 +309,7 @@ int main()
   lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("    Emulator    ") / 2);
   lcd_string("    Emulator    ");
   sleep_ms(500);
-
+#endif
   char *nbuffer;
   nbuffer = calloc(MSG_SIZE, 1);
   nbuffer[0] = 0x53;
@@ -327,6 +326,7 @@ int main()
         lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("  a  Skylander  ") / 2);
         lcd_string("  a  Skylander  ");
         sleep_ms(500);
+        printf("Please select a Skylander\n");
       }
       else
       {
@@ -359,6 +359,7 @@ int main()
           lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("     loaded     ") / 2);
           lcd_string("     loaded     ");
           sleep_ms(500);
+          printf("f_open(%s) error probably already loaded\n", skyFiles[selected_skylander]);
         }
         else
         {
@@ -367,7 +368,7 @@ int main()
             //add_fd_to_array(newfile, loaded_skylanders, MAX_SKYLANDER_COUNT);
             loaded_skylanders[selected_slot] = newfile;
 
-            printf("File %s loaded", skyFiles[selected_skylander]);
+            printf("File %s loaded\n", skyFiles[selected_skylander]);
             lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("  File  loaded  ") / 2);
             lcd_string("  File  loaded  ");
             sleep_ms(100);
@@ -389,6 +390,7 @@ int main()
             lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("     loaded     ") / 2);
             lcd_string("     loaded     ");
             sleep_ms(500);
+            printf("File already loaded\n");
           }
         }
       }
@@ -397,6 +399,7 @@ int main()
       lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("    Emulator    ") / 2);
       lcd_string("    Emulator    ");
       sleep_ms(500);
+      printf("Portal\n");
     }
 
     if (!gpio_get(BUTTON_LEFT))
@@ -478,6 +481,7 @@ int main()
       lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("    Emulator    ") / 2);
       lcd_string("    Emulator    ");
       sleep_ms(500);
+      printf("Selected slot %d\n", selected_slot);
     }
 
     if(!gpio_get(BUTTON_SLOT_LEFT)){
@@ -502,6 +506,7 @@ int main()
       lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("    Emulator    ") / 2);
       lcd_string("    Emulator    ");
       sleep_ms(500);
+      printf("Selected slot %d\n", selected_slot);
     }
 
     if (!gpio_get(BUTTON_START))
@@ -514,6 +519,7 @@ int main()
       tud_hid_report(0, nbuffer, MSG_SIZE);
       free(nbuffer);
       sleep_ms(20);
+      printf("Start\n");
     }
     tud_task();
 

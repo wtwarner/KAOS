@@ -1,6 +1,6 @@
 [submodule "lib/no-OS-FatFS-SD-SPI-RPi-Pico"]
 	path = lib/no-OS-FatFS-SD-SPI-RPi-Pico
-	url = https://github.com/amadeoestrada/no-OS-FatFS-SD-SPI-RPi-Pico
+	url = https://github.com/wtwarner/no-OS-FatFS-SD-SPI-RPi-Pico.git
 [submodule "lib/openssl"]
 	path = lib/openssl
 	url = https://github.com/openssl/openssl.git
