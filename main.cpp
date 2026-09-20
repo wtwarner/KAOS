@@ -636,20 +636,19 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
           unsigned char s = buffer[1] & 0x0f;
           outbuffer[1] = 0x10 | s;
       }
-      tud_hid_report(0, outbuffer, bufsize);
+      tud_hid_report(0, outbuffer, MSG_SIZE);
       break;
-      
+
     case 'C': // 0x42 Skylander Portal Color
       // byte 1: RED
       // byte 2: GREEN
       // byte 3: BLUE
-      printf("Color\n");
+      printf("Color %d, %d, %d\n", buffer[1], buffer[2], buffer[3]));
       for (int i = 0; i < 2; i ++) {
         neo.setPixelColor(i, buffer[1], buffer[2], buffer[3]);
       }
       neo.show();
-      printf("..done\n");
-      tud_hid_report(0, buffer, bufsize);
+      tud_hid_report(0, buffer, MSG_SIZE);
       break;
     }
   }
