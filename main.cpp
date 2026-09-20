@@ -383,7 +383,6 @@ int main()
       printf("Selected Skylander #%d\n", selected_skylander);
       lcd_draw_2line("Selected File", skyFiles[selected_skylander]);
       sleep_ms(500);
-
       lcd_draw_status();
     }
 
@@ -415,8 +414,9 @@ int main()
       char str[2];
       sprintf(str, "%d", selected_slot);
       lcd_draw_2line("Selected Slot", str);
-      sleep_ms(500);
       printf("Selected slot %d\n", selected_slot);
+      sleep_ms(500);
+      lcd_draw_status();
     }
 
     if(!debounce_read(&db_state[butt_slot_left])){
@@ -431,9 +431,9 @@ int main()
       char str[2];
       sprintf(str, "%d", selected_slot);
       lcd_draw_2line("Selected Slot", str);
+      printf("Selected slot %d\n", selected_slot);
       sleep_ms(500);
       lcd_draw_status();
-      printf("Selected slot %d\n", selected_slot);
     }
 
     if (!debounce_read(&db_state[butt_start]))

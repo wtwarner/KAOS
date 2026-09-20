@@ -41,7 +41,7 @@ void debounce_init(struct debounce_state_t *db, unsigned int gpio)
   sm_config_set_jmp_pin(&c, gpio); // for JMP
   // set the clock divisor to set a reasonable debounce time
   // TODO: let the user set the debounce time in ms, calculate clock divisor for pio delay of 31.
-  sm_config_set_clkdiv(&c, 11);
+  sm_config_set_clkdiv(&c, 9000);
   // init the pio sm with the config
   pio_sm_init(db->pio, db->sm, db->offset, &c);
   // enable the sm

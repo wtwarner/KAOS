@@ -10,6 +10,7 @@ debounce_loop:
     jmp x-- debounce_loop
     in pins, 1
     push
+    wait 1 pin 0
 .wrap
 
 
