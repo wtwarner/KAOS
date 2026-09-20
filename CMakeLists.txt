@@ -31,28 +31,29 @@ set(PICO_EXAMPLES_PATH ${PROJECT_SOURCE_DIR})
 pico_sdk_init()
 
 
-
 add_executable(skylander_portal_emu
-        main.c
+        main.cpp
         )
-#target_compile_definitions(skylander_portal_emu PRIVATE MBEDTLS_CONFIG_FILE="mbedtls_config.h")
 target_sources(skylander_portal_emu PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/main.c
-        ${CMAKE_CURRENT_LIST_DIR}/rijndael.c
-        ${CMAKE_CURRENT_LIST_DIR}/SkylanderCrypt.c
+        ${CMAKE_CURRENT_LIST_DIR}/main.cpp
         ${CMAKE_CURRENT_LIST_DIR}/hw_config.c
         ${CMAKE_CURRENT_LIST_DIR}/usb_descriptors.c
+        ${CMAKE_CURRENT_LIST_DIR}/button_debounce.c
         )
         
 add_subdirectory(lib/no-OS-FatFS-SD-SPI-RPi-Pico/FatFs_SPI build)
+add_subdirectory(lib/pi-pico-adafruit-neopixels/pico_neopixels build_neo)
+
 target_include_directories(skylander_portal_emu PRIVATE ${CMAKE_CURRENT_LIST_DIR} )
 
 # pull in common dependencies 
-target_link_libraries(skylander_portal_emu PUBLIC pico_stdlib tinyusb_device tinyusb_board hardware_i2c hardware_gpio FatFs_SPI pico_mbedtls)
+target_link_libraries(skylander_portal_emu PUBLIC pico_stdlib tinyusb_device tinyusb_board hardware_i2c hardware_gpio FatFs_SPI pico_neopixel hardware_pio)
 pico_enable_stdio_uart(skylander_portal_emu 1)
 # Tell CMake where to find other source code
 
 # create map/bin/hex/uf2 file etc.
 pico_add_extra_outputs(skylander_portal_emu)
+
+pico_generate_pio_header(skylander_portal_emu ${CMAKE_CURRENT_LIST_DIR}/button_debounce.pio)
 
 
