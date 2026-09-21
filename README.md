@@ -54,3 +54,30 @@ Copy the KAOS.uf2 File onto the Microcontroller, while it is in flash mode.
 To build you need the pi pico sdk
 
 You need to copy the tusb_config.h into this location <pico-sdk_location>\lib\tinyusb\src\tusb_config.h
+
+## Bill Update
+
+Pin assigments:
+SD Card: (SPI1)
+  14. Sclk. GPIO 10
+  15. MOSI (Tx).  GPio 11
+  16. MISO (Rx). GPIO 12.  Pull up to 3.3V. ????? TBD
+  17. Csn.  GPIO 13. Pull up to 3.3V
+  5V VCC
+LCD: (I2C0)
+  6: SDA (GPIO 4)
+  7: SCL (GPIO 5)
+  5V VCC
+UART (UART0)
+  1: Tx GPIO 0
+  2: Rx GPIO 1
+Neopixel: PIO
+  9:  GPIO 6
+  5V VCC
+Buttons: PIO
+  19: GPIO 14
+  20: GPIO 15 Slot up
+  24: GPIO 18 Start
+  25: GPIO 19 Figure up
+  26: GPIO 20
+  27: GPIO 21 Select

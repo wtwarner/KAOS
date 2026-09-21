@@ -218,12 +218,8 @@ void lcd_draw_status()
 
 int main()
 {
-  bool start_emu = false;
   // INIT SERIAL DEBUG
-  printf("new");
   stdio_init_all();
-  printf("INIT STDIO DONE\n");
-  //sleep_ms(200);
   printf("-------------------------------------\n");
   printf(" KAOS - a Raspbery Pi Pico Skylander \n");
   printf("      Portal of Power Emulator       \n");
@@ -231,8 +227,12 @@ int main()
   printf("    Made by NicoAICP and redcubie    \n");
   printf("-------------------------------------\n");
 
+  // LED init
+  neo.begin();
+  neo.clear();
+  neo.show();
+
   // INIT GPIO for buttons
-  
   for (int b = 0; b < sizeof(butt_gpios)/sizeof(butt_gpios[0]); b ++) {
     gpio_init(butt_gpios[b]);
     gpio_set_dir(butt_gpios[b], GPIO_IN);
@@ -257,11 +257,7 @@ int main()
   lcd_draw_2line("Starting", "Initialization");
   sleep_ms(500);
 
-  // LED init
-  neo.begin();
-  neo.clear();
-  neo.show();
-
+ 
   printf("SD Init\n");
   // SDCARD INIT
   sd_card_t *pSD = sd_get_by_num(0);
@@ -647,11 +643,12 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
       // byte 1: RED
       // byte 2: GREEN
       // byte 3: BLUE
-      printf("Color ");
+      printf("Color\n");
       for (int i = 0; i < 2; i ++) {
         neo.setPixelColor(i, buffer[1], buffer[2], buffer[3]);
-        neo.show();
       }
+      neo.show();
+      printf("..done\n");
       tud_hid_report(0, buffer, bufsize);
       break;
     }
