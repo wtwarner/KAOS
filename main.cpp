@@ -278,7 +278,6 @@ void load_figure(int slot, char *fname)
             printf("File %s loaded\n", fname);
             lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("  File  loaded  ") / 2);
             lcd_string("  File  loaded  ");
-            send_usb_sense();
             sleep_ms(500);
         }
         else
@@ -293,7 +292,7 @@ void load_figure(int slot, char *fname)
 void load_state()
 {
   FIL file;
-  FRESULT fr = f_open(&file, "state.bin", FA_READ);
+  FRESULT fr = f_open(&file, "state.bin", FA_OPEN_EXISTING | FA_READ);
   if (fr == FR_OK)
   {
       printf("Restoring state..\n");
@@ -301,8 +300,8 @@ void load_state()
       unsigned int actual_len;
       f_read(&file, &st, sizeof(st), &actual_len);
       if (actual_len == sizeof(st)) {
-          selected_skylander = st.selected_skylander % sd_skylander_count;
-          selected_slot = st.selected_slot % MAX_SKYLANDER_COUNT;
+          selected_skylander = std::max(-1, std::min(st.selected_skylander, sd_skylander_count - 1));
+          selected_slot = std::max(-1, std::min(st.selected_slot, MAX_SKYLANDER_COUNT - 1));
           // if s0 in skyFiles
           for (int s = 0; s < sd_skylander_count; s++) {
               char *dot = strchr(skyFiles[s], '.');
@@ -322,7 +321,7 @@ void load_state()
 void save_state()
 {
   FIL file;
-  FRESULT fr = f_open(&file, "state.bin", FA_OPEN_EXISTING | FA_WRITE);
+  FRESULT fr = f_open(&file, "state.bin", FA_CREATE_ALWAYS | FA_WRITE);
   if (fr != FR_OK) {
       printf("f_open(%s) error: %s (%d)\n", "state.bin", FRESULT_str(fr), fr);
       return;
@@ -411,6 +410,8 @@ int main()
 
   sd_skylander_count = f_listfiles(skyFiles, sizeof(skyFiles)/sizeof(skyFiles[0]));
 
+  load_state();
+
   // INIT TINYUSB
   board_init();
   // tusb_init();
@@ -420,9 +421,7 @@ int main()
   lcd_draw_2line("Finished", "Initialization");
   sleep_ms(500);
 
-  lcd_draw_2line("Skylander Portal", "Emulator");
-
-  load_state();
+  lcd_draw_status();
 
   char nbuffer[MSG_SIZE];
 
@@ -448,6 +447,7 @@ int main()
           send_usb_sense();
         }
         load_figure(selected_slot, skyFiles[selected_skylander]);
+        send_usb_sense();
       }
       save_state();
       lcd_draw_status();
