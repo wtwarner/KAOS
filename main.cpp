@@ -58,7 +58,7 @@ struct debounce_state_t db_state[num_buttons];
 //////////END BUTTON
 
 //////////LED STUFF
-Adafruit_NeoPixel neo(2, 6, NEO_GBR|NEO_KHZ800);
+Adafruit_NeoPixel neo(2, 6, NEO_RGB|NEO_KHZ800);
 //////////END OF LED
 //////////LCD STUFF
 // commands
@@ -363,7 +363,9 @@ int main()
 
   // LED init
   neo.begin();
-  neo.clear();
+  for (int i = 0; i < 2; i ++) {
+    neo.setPixelColor(i, 10,10,150);
+  }
   neo.show();
 
   // INIT GPIO for buttons
