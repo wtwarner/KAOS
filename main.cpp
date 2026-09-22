@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
 
 #include "bsp/board.h"
 #include "tusb.h"
@@ -30,15 +31,24 @@
 int sd_skylander_count = 0;
 int selected_skylander = -1; // If this is -1, do not read a skylander
 int selected_slot = 0;
+
+struct state_t {
+    int selected_slot;
+    int selected_skylander;
+    char name[4][32]; // basename of file; null-terminated
+};
+void load_state();
+void save_state();
+
 //////////ENDOFMENU
 //////////PORTAL
 #define MSG_SIZE 32
 #define BLOCK_SIZE 16
 #define MAX_SKYLANDER_COUNT 4
 FIL *loaded_skylanders[MAX_SKYLANDER_COUNT] = {0};
-//bool shutthefuckup = false;
-//bool send_data_now = false;
+char *loaded_skylanders_fname[MAX_SKYLANDER_COUNT] = {0};
 char sense_counter = 0;
+char *skyFiles[255];
 //////////END OF PORTAL
 
 //////////BUTTON STUFF
@@ -209,11 +219,135 @@ void lcd_draw_2line(const char *line1, const char *line2)
 void lcd_draw_status()
 {
     lcd_clear();
-    lcd_set_cursor(0, (MAX_CHARS / 2) - strlen("Skylander Portal") / 2);
-    lcd_string("Skylander Portal");
-    lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("    Emulator    ") / 2);
-    lcd_string("    Emulator    ");
-    sleep_ms(500);
+    bool empty = true;
+    for (int s = 0; s < std::min(4, MAX_SKYLANDER_COUNT); s ++) {
+        if (loaded_skylanders[s] != 0)
+            empty = false;
+    }
+    for (int s = 0; s < std::min(empty ? 2 : 4, MAX_SKYLANDER_COUNT); s ++) {
+        lcd_set_cursor(s / 2, (s % 2) ? (MAX_CHARS / 2) : 0);
+        lcd_char('0' + s);
+        lcd_char((s == selected_slot) ? '*' : ':');
+        if (loaded_skylanders[s] != 0) {
+            char *namep = loaded_skylanders_fname[s];
+            int n = 2;
+            while (n++ < (MAX_CHARS / 2) && namep && *namep != '.' && *namep != 0) {
+                lcd_char(*namep ++);
+            }
+        }
+        else {
+            lcd_string("    -");
+        }
+    }
+    if (empty) {
+        lcd_set_cursor(1, 0);
+        lcd_string("->Figure,Select");
+    }
+}
+
+void send_usb_sense()
+{
+    char nbuffer[MSG_SIZE];
+    // Needs to be called for skylander to be read
+    memset(nbuffer, 0, MSG_SIZE);
+    nbuffer[0] = 0x53;
+    nbuffer[1] = create_sense_bitmask(loaded_skylanders, MAX_SKYLANDER_COUNT);
+    nbuffer[5] = sense_counter++;
+    nbuffer[6] = 0x01;
+    tud_hid_report(0, nbuffer, MSG_SIZE);
+}
+
+void load_figure(int slot, char *fname)
+{
+    FIL *newfile = (FIL *)calloc(1, sizeof(FIL));
+    FRESULT fr = f_open(newfile, fname, FA_OPEN_EXISTING | FA_READ | FA_WRITE);
+    if (fr != FR_OK && fr != FR_EXIST)
+    {
+        printf("f_open(%s) error (Probably because file is already loaded): %s (%d)\n", fname, FRESULT_str(fr), fr);
+        lcd_draw_2line("File already", "loaded");
+        sleep_ms(500);
+        printf("f_open(%s) error probably already loaded\n", fname);
+    }
+    else
+    {
+        if (fd_in_array(newfile, loaded_skylanders, MAX_SKYLANDER_COUNT) == 0)
+        {
+            loaded_skylanders[slot] = newfile;
+            loaded_skylanders_fname[slot] = fname;
+            
+            printf("File %s loaded\n", fname);
+            lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("  File  loaded  ") / 2);
+            lcd_string("  File  loaded  ");
+            send_usb_sense();
+            sleep_ms(500);
+        }
+        else
+        {
+            lcd_draw_2line("File already", "loaded");
+            sleep_ms(500);
+            printf("File already loaded\n");
+        }
+    }
+}
+
+void load_state()
+{
+  FIL file;
+  FRESULT fr = f_open(&file, "state.bin", FA_READ);
+  if (fr == FR_OK)
+  {
+      printf("Restoring state..\n");
+      state_t st;
+      unsigned int actual_len;
+      f_read(&file, &st, sizeof(st), &actual_len);
+      if (actual_len == sizeof(st)) {
+          selected_skylander = st.selected_skylander % sd_skylander_count;
+          selected_slot = st.selected_slot % MAX_SKYLANDER_COUNT;
+          // if s0 in skyFiles
+          for (int s = 0; s < sd_skylander_count; s++) {
+              char *dot = strchr(skyFiles[s], '.');
+              for (int slot = 0; slot < MAX_SKYLANDER_COUNT; slot ++) {
+                  // compare state filename against basename of file list
+                  if (dot && strlen(st.name[slot]) == dot - skyFiles[s] && 0 == strncmp(st.name[slot], skyFiles[s], dot - skyFiles[s])) {
+                      // load skyFiles[s] into slot
+                      load_figure(slot, skyFiles[s]);
+                  }
+              }
+          }
+      }
+      f_close(&file);
+  }
+}  
+
+void save_state()
+{
+  FIL file;
+  FRESULT fr = f_open(&file, "state.bin", FA_OPEN_EXISTING | FA_WRITE);
+  if (fr != FR_OK) {
+      printf("f_open(%s) error: %s (%d)\n", "state.bin", FRESULT_str(fr), fr);
+      return;
+  }
+  printf("Saving state..\n");
+  state_t st{
+      .selected_slot = selected_slot,
+      .selected_skylander = selected_skylander,
+      {0}
+  };
+  printf(" selected_slot %u, skylander %u\n", selected_slot, selected_skylander);
+  for (int slot = 0; slot < MAX_SKYLANDER_COUNT; slot ++) {
+    if (loaded_skylanders_fname[slot] != 0) {
+      char *dot = strchr(loaded_skylanders_fname[slot], '.');
+      strncpy(st.name[slot], loaded_skylanders_fname[slot], dot - loaded_skylanders_fname[slot]);
+      st.name[slot][dot - loaded_skylanders_fname[slot]] = '\0';
+      printf(" slot %d = %s\n", slot, st.name[slot]);
+    }
+  }
+  unsigned int actual_len;
+  f_write(&file, &st, sizeof(st), &actual_len);
+  if (actual_len != sizeof(st)) {
+      printf("f_write failed\n");
+  }
+  f_close(&file);
 }
 
 int main()
@@ -273,7 +407,6 @@ int main()
   }
   printf("SD mounted\n");
 
-  char *skyFiles[255];
   sd_skylander_count = f_listfiles(skyFiles, sizeof(skyFiles)/sizeof(skyFiles[0]));
 
   // INIT TINYUSB
@@ -287,9 +420,10 @@ int main()
 
   lcd_draw_2line("Skylander Portal", "Emulator");
 
+  load_state();
+
   char nbuffer[MSG_SIZE];
 
-  bool send_data = false;
   while (true)
   {
     if (!debounce_read(&db_state[butt_select]))
@@ -302,62 +436,18 @@ int main()
       }
       else
       {
-        // TODO: Check if slot already has a file, if yes remove it
-        if(loaded_skylanders[selected_slot] != 0)
+        if (loaded_skylanders[selected_slot] != 0)
         {
           FIL *toClose = loaded_skylanders[selected_slot];
           f_close(toClose);
           free(toClose);
           loaded_skylanders[selected_slot] = 0;
-          memset(nbuffer, 0, MSG_SIZE);
-          nbuffer[0] = 0x53;
-          nbuffer[1] = create_sense_bitmask(loaded_skylanders, MAX_SKYLANDER_COUNT);
-          nbuffer[5] = sense_counter++;
-          nbuffer[6] = 0x01;
-          tud_hid_report(0, nbuffer, MSG_SIZE);
-          sleep_ms(500);
-            
+          loaded_skylanders_fname[selected_slot] = 0;
+          send_usb_sense();
         }
-
-        FIL *newfile = (FIL *)calloc(1, sizeof(FIL));
-        FRESULT fr = f_open(newfile, skyFiles[selected_skylander], FA_OPEN_EXISTING | FA_READ | FA_WRITE);
-        if (fr != FR_OK && fr != FR_EXIST)
-        {
-          printf("f_open(%s) error (Probably because file is already loaded): %s (%d)\n", skyFiles[selected_skylander], FRESULT_str(fr), fr);
-          //remove_fd_from_array(newfile, loaded_skylanders, MAX_SKYLANDER_COUNT);
-          lcd_draw_2line("File already", "loaded");
-          sleep_ms(500);
-          printf("f_open(%s) error probably already loaded\n", skyFiles[selected_skylander]);
-        }
-        else
-        {
-          if (fd_in_array(newfile, loaded_skylanders, MAX_SKYLANDER_COUNT) == 0)
-          {
-            //add_fd_to_array(newfile, loaded_skylanders, MAX_SKYLANDER_COUNT);
-            loaded_skylanders[selected_slot] = newfile;
-
-            printf("File %s loaded\n", skyFiles[selected_skylander]);
-            lcd_set_cursor(1, (MAX_CHARS / 2) - strlen("  File  loaded  ") / 2);
-            lcd_string("  File  loaded  ");
-            sleep_ms(100);
-            // Needs to be called for skylander to be read
-            memset(nbuffer, 0, MSG_SIZE);
-            nbuffer[0] = 0x53;
-            nbuffer[1] = create_sense_bitmask(loaded_skylanders, MAX_SKYLANDER_COUNT);
-            nbuffer[5] = sense_counter++;
-            nbuffer[6] = 0x01;
-            tud_hid_report(0, nbuffer, MSG_SIZE);
-            sleep_ms(500);
-          }
-          else
-          {
-            //remove_fd_from_array(newfile, loaded_skylanders, MAX_SKYLANDER_COUNT);
-            lcd_draw_2line("File already", "loaded");
-            sleep_ms(500);
-            printf("File already loaded\n");
-          }
-        }
+        load_figure(selected_slot, skyFiles[selected_skylander]);
       }
+      save_state();
       lcd_draw_status();
     }
 
@@ -399,7 +489,7 @@ int main()
       lcd_draw_status();
     }
 
-    if(!debounce_read(&db_state[butt_slot_right])){
+    if (!debounce_read(&db_state[butt_slot_right])){
       if (selected_slot < MAX_SKYLANDER_COUNT - 1)
       {
         selected_slot++;
@@ -411,11 +501,12 @@ int main()
       sprintf(str, "%d", selected_slot);
       lcd_draw_2line("Selected Slot", str);
       printf("Selected slot %d\n", selected_slot);
+      save_state();
       sleep_ms(500);
       lcd_draw_status();
     }
 
-    if(!debounce_read(&db_state[butt_slot_left])){
+    if (!debounce_read(&db_state[butt_slot_left])){
       if (selected_slot > 0)
       {
         selected_slot--;
@@ -429,24 +520,18 @@ int main()
       lcd_draw_2line("Selected Slot", str);
       printf("Selected slot %d\n", selected_slot);
       sleep_ms(500);
+      save_state();
       lcd_draw_status();
     }
 
     if (!debounce_read(&db_state[butt_start]))
     {
-      memset(nbuffer, 0, MSG_SIZE);
-      nbuffer[0] = 0x53;
-      nbuffer[1] = create_sense_bitmask(loaded_skylanders, MAX_SKYLANDER_COUNT);
-      nbuffer[5] = sense_counter++;
-      nbuffer[6] = 0x01;
-      tud_hid_report(0, nbuffer, MSG_SIZE);
-      printf("Start\n");
+        send_usb_sense();
+        printf("Start\n");
     }
 
     tud_task();
 
-    // tinyusb device task
-    // sleep_ms(1000);
   }
   return 0;
 }
@@ -496,7 +581,6 @@ void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_
 // Return zero will cause the stack to STALL request
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer, uint16_t reqlen)
 {
-  printf("GET %X", report_type);
   // TODO not Implemented
   (void)instance;
   (void)report_id;
@@ -514,7 +598,6 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
   char outbuffer[MSG_SIZE];
   if (report_type == HID_REPORT_TYPE_OUTPUT)
   {
-    // char paddedbuffer[MSG_SIZE] = {0};
     FIL *curfile = 0;
     uint actual_len = 0;
 
@@ -522,7 +605,6 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
     {
     case 'R': // 0x52 Reboot/Shutdown Portal
       printf("Recieved reboot\n");
-      //shutthefuckup = true;
       memset(outbuffer, 0, MSG_SIZE);
       outbuffer[0] = 0x52;
       outbuffer[1] = 0x02;
@@ -531,7 +613,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
       break;
 
     case 'J':
-      printf("I do not know what it does but something related to sound\n");
+        //printf("I do not know what it does but something related to sound\n");
       memset(outbuffer, 0, MSG_SIZE);
       outbuffer[0] = buffer[0];
       tud_hid_report(0, outbuffer, MSG_SIZE);
@@ -552,19 +634,11 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
       outbuffer[2] = 0xff;
       outbuffer[3] = 0x77;
       tud_hid_report(0, outbuffer, MSG_SIZE);
-      //if (buffer[1] == 0x01)
-      //  shutthefuckup = false;
       break;
 
     case 'S': // 0x53 Sense how many Skylanders are on the Portal
       printf("Recieved sense\n");
-      memset(outbuffer, 0, MSG_SIZE);
-      outbuffer[0] = 0x53;
-      outbuffer[1] = create_sense_bitmask(loaded_skylanders, MAX_SKYLANDER_COUNT);
-      // pseudo: outbuffer[2:5] = {0x00} (len = 3)
-      outbuffer[5] = sense_counter++;
-      outbuffer[6] = 0x01;
-      tud_hid_report(0, outbuffer, MSG_SIZE);
+      send_usb_sense();
       break;
 
     case 'Q': // 0x51 Read Blocks (16 Bytes) From Skylander
@@ -618,7 +692,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
           {
               // lcd_set_cursor(0, (MAX_CHARS / 2) - strlen("    Starting    ") / 2);
               // lcd_string(" Error  writing ");
-              printf("Read data length is %i not %i", actual_len, BLOCK_SIZE);
+              printf("Write data length is %i not %i", actual_len, BLOCK_SIZE);
               return;
           }
       }
@@ -643,7 +717,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
       // byte 1: RED
       // byte 2: GREEN
       // byte 3: BLUE
-      printf("Color %d, %d, %d\n", buffer[1], buffer[2], buffer[3]));
+      printf("Color %d, %d, %d\n", buffer[1], buffer[2], buffer[3]);
       for (int i = 0; i < 2; i ++) {
         neo.setPixelColor(i, buffer[1], buffer[2], buffer[3]);
       }
